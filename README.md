@@ -28,5 +28,5 @@ A lightweight, secure SaaS application designed to help independent medical prac
 To run this project locally, create a `.env.local` file in the root directory and add the following:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://qubisidtrwizhxmorlgi.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_zpGAGS_R4HfV6WITF57IXg_hR0YV-nI
+NEXT_PUBLIC_SUPABASE_URL=your_key_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key_here
