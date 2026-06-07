@@ -1,3 +1,5 @@
+"use client";
+
 export default function SupportPage() {
   async function handleSubmit(event) {
     event.preventDefault();
