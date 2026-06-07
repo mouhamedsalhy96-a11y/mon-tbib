@@ -69,15 +69,33 @@ export default function PatientProfile() {
     if (!newNote.trim()) return;
     setSavingNote(true);
     try {
+      // 1. Get logged in user
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Utilisateur non connecté");
+
+      // 2. Fetch the clinic_id so the database bouncer knows where this note belongs
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('clinic_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.clinic_id) throw new Error("Profil clinique introuvable");
+
+      // 3. Save the note with all 3 critical keys (clinic, patient, doctor)
       const { error } = await supabase.from('medical_notes').insert([{ 
-        patient_id: patientId, doctor_id: user.id, note_content: newNote 
+        clinic_id: profile.clinic_id,
+        patient_id: patientId, 
+        doctor_id: user.id, 
+        note_content: newNote 
       }]);
+      
       if (error) throw error;
       setNewNote("");
       showToast("Note clinique ajoutée au dossier");
       setRefreshTrigger(prev => prev + 1);
     } catch (error) {
+      console.error("Save Error:", error);
       showToast("Erreur de sauvegarde", "error");
     } finally {
       setSavingNote(false);
@@ -123,7 +141,7 @@ export default function PatientProfile() {
                 <div className="bg-zinc-50 p-2 text-zinc-400"><Calendar className="h-4 w-4" /></div>
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 leading-none mb-1">Naissance</p>
-                  <p className="text-sm font-bold text-zinc-900">{patient?.date_of_birth || "N/A"}</p>
+                  <p className="text-sm font-bold text-zinc-900">{patient?.date_of_birth ? new Date(patient.date_of_birth).toLocaleDateString('fr-FR') : "N/A"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -153,7 +171,7 @@ export default function PatientProfile() {
             </div>
           </div>
 
-          {/* Ordonnances Widget (PUT BACK IN) */}
+          {/* Ordonnances Widget */}
           <div className="border border-zinc-200 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-zinc-200 bg-zinc-50/50 px-6 py-4 flex items-center justify-between">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-800">Ordonnances</h3>
@@ -162,7 +180,7 @@ export default function PatientProfile() {
             <div className="divide-y divide-zinc-100 max-h-[300px] overflow-y-auto">
               {prescriptions.map((p) => (
                 <Link key={p.id} href={`/dashboard/patients/${patientId}/ordonnance/${p.id}`} className="p-5 flex items-center justify-between hover:bg-zinc-50 group transition-colors">
-                  <p className="text-sm font-bold text-zinc-900">{new Date(p.created_at).toLocaleDateString()}</p>
+                  <p className="text-sm font-bold text-zinc-900">{new Date(p.created_at).toLocaleDateString('fr-FR')}</p>
                   <ChevronRight className="h-4 w-4 text-zinc-300 group-hover:text-zinc-900 transition-all" />
                 </Link>
               ))}
@@ -170,7 +188,7 @@ export default function PatientProfile() {
             </div>
           </div>
 
-          {/* Certificats Widget (PUT BACK IN) */}
+          {/* Certificats Widget */}
           <div className="border border-zinc-200 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-zinc-200 bg-zinc-50/50 px-6 py-4 flex items-center justify-between">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-800">Certificats</h3>
@@ -181,7 +199,7 @@ export default function PatientProfile() {
                 <Link key={c.id} href={`/dashboard/patients/${patientId}/certificat/${c.id}`} className="p-5 flex items-center justify-between hover:bg-zinc-50 group transition-colors">
                   <div>
                     <p className="text-sm font-bold text-zinc-900 truncate max-w-[150px]">{c.title}</p>
-                    <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">{new Date(c.created_at).toLocaleDateString()}</p>
+                    <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">{new Date(c.created_at).toLocaleDateString('fr-FR')}</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-zinc-300 group-hover:text-zinc-900 transition-all" />
                 </Link>
@@ -202,7 +220,7 @@ export default function PatientProfile() {
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="text-lg font-black text-zinc-900">{inv.amount} DT</p>
-                      <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tighter">{new Date(inv.created_at).toLocaleDateString()}</p>
+                      <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tighter">{new Date(inv.created_at).toLocaleDateString('fr-FR')}</p>
                     </div>
                     <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-sm ring-1 ring-inset ${
                       inv.status === 'Payé' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 'bg-amber-50 text-amber-700 ring-amber-600/20'
