@@ -4,14 +4,15 @@ import { useState, useEffect } from "react";
 import { Save, Building2, MapPin, Phone, Stethoscope, User } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 import { useToast } from "../layout";
+import { useRouter } from "next/navigation";
 
 export default function Settings() {
   const { showToast } = useToast();
+  const router = useRouter(); // Next.js router for cache busting
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
-  // New state to hold the doctor's name
   const [doctorName, setDoctorName] = useState("");
   
   const [clinic, setClinic] = useState({
@@ -26,13 +27,11 @@ export default function Settings() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get profile (for doctor's name)
       const { data: profile } = await supabase.from('profiles').select('clinic_id, full_name').eq('id', user.id).single();
       
       if (profile) {
         setDoctorName(profile.full_name || "Dr. ");
         
-        // Get clinic data
         const { data: clinicData } = await supabase.from('clinics').select('*').eq('id', profile.clinic_id).single();
         if (clinicData) {
           setClinic({
@@ -55,7 +54,12 @@ export default function Settings() {
       const { data: { user } } = await supabase.auth.getUser();
       const { data: profile } = await supabase.from('profiles').select('clinic_id').eq('id', user.id).single();
       
-      // 1. UPDATE THE DOCTOR'S PROFILE
+      // 1. UPDATE SUPABASE AUTH METADATA (The hidden login data)
+      await supabase.auth.updateUser({
+        data: { full_name: doctorName }
+      });
+
+      // 2. UPDATE PROFILES TABLE (The database data)
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ full_name: doctorName })
@@ -63,7 +67,7 @@ export default function Settings() {
 
       if (profileError) throw profileError;
 
-      // 2. UPDATE THE CLINIC
+      // 3. UPDATE THE CLINIC
       const { error: clinicError } = await supabase
         .from('clinics')
         .update({
@@ -78,14 +82,15 @@ export default function Settings() {
       
       showToast("Paramètres mis à jour avec succès !");
       
-      // Nuclear refresh: Forces the browser to reload and fetch fresh data from Supabase
+      // 4. BUST CACHE & REFRESH: Force Next.js and the Browser to load the new name
+      router.refresh(); // Clears Next.js Server Cache
       setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+        window.location.reload(); // Reloads layout.js to grab fresh data
+      }, 800);
 
     } catch (err) {
       console.error("Erreur:", err);
-      showToast("Erreur lors de la sauvegarde.", "error");
+      showToast("Erreur lors de la sauvegarde. Vérifiez vos permissions RLS.", "error");
     } finally {
       setSaving(false);
     }
@@ -101,8 +106,6 @@ export default function Settings() {
       </div>
 
       <form onSubmit={handleSave} className="border border-zinc-200 bg-white p-8 space-y-8">
-        
-        {/* SECTION 1: LE DOCTEUR */}
         <div className="space-y-6">
           <h2 className="text-xs font-black uppercase tracking-widest text-emerald-600 border-b border-zinc-100 pb-2">Le Praticien</h2>
           
@@ -121,7 +124,6 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* SECTION 2: LE CABINET */}
         <div className="space-y-6">
           <h2 className="text-xs font-black uppercase tracking-widest text-emerald-600 border-b border-zinc-100 pb-2">Le Cabinet</h2>
           

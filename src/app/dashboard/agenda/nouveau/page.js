@@ -40,7 +40,7 @@ export default function NouveauRendezVous() {
         if (profile) {
           const { data, error } = await supabase
             .from('patients')
-            .select('id, first_name, last_name, phone, dob, date_of_birth') 
+            .select('id, first_name, last_name, phone, date_of_birth') 
             .eq('clinic_id', profile.clinic_id);
             
           if (error) {

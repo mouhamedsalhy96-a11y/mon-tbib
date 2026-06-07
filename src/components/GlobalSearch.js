@@ -20,7 +20,7 @@ export default function GlobalSearch() {
       if (profile) {
         const { data } = await supabase
           .from('patients')
-          .select('id, first_name, last_name, phone, dob, date_of_birth')
+          .select('id, first_name, last_name, phone, date_of_birth')
           .eq('clinic_id', profile.clinic_id);
         setPatients(data || []);
       }
