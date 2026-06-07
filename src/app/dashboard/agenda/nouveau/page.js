@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 import { supabase } from "../../../../lib/supabase";
+import PatientSearch from "../../../../components/PatientSearch";
 
-// Modern calendar imports
 import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { fr } from "date-fns/locale";
@@ -18,7 +18,6 @@ export default function NouveauRendezVous() {
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState([]);
   
-  // FIX: Properly wrap the setHours in a new Date() object so the calendar doesn't crash
   const [formData, setFormData] = useState({
     patient_id: "",
     appointment_date: new Date(),
@@ -28,8 +27,10 @@ export default function NouveauRendezVous() {
 
   useEffect(() => {
     const fetchPatients = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
         const { data: profile } = await supabase
           .from('profiles')
           .select('clinic_id')
@@ -37,14 +38,19 @@ export default function NouveauRendezVous() {
           .single();
 
         if (profile) {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('patients')
-            .select('id, first_name, last_name')
-            .eq('clinic_id', profile.clinic_id)
-            .order('first_name', { ascending: true });
+            .select('id, first_name, last_name, phone, dob, date_of_birth') 
+            .eq('clinic_id', profile.clinic_id);
             
-          setPatients(data || []);
+          if (error) {
+            console.error("SUPABASE ERROR FETCHING PATIENTS:", error.message);
+          } else {
+            setPatients(data || []);
+          }
         }
+      } catch (err) {
+        console.error("GENERAL ERROR:", err);
       }
     };
     fetchPatients();
@@ -55,48 +61,32 @@ export default function NouveauRendezVous() {
     setLoading(true);
 
     try {
-      // FIX: Strict validation to ensure we never send empty UUIDs
-      if (!formData.patient_id) {
-        throw new Error("Veuillez sélectionner un patient dans la liste.");
-      }
+      if (!formData.patient_id) throw new Error("Veuillez sélectionner un patient dans la liste.");
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Utilisateur non connecté");
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('clinic_id')
-        .eq('id', user.id)
-        .single();
-
+      const { data: profile } = await supabase.from('profiles').select('clinic_id').eq('id', user.id).single();
       if (!profile) throw new Error("Profil clinique introuvable.");
 
-      // Format the date securely for Supabase (YYYY-MM-DD)
       const dateObj = new Date(formData.appointment_date);
       const formattedDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
 
-      // Format the time securely for Supabase (HH:mm:ss)
       const timeObj = new Date(formData.appointment_time);
       const formattedTime = `${String(timeObj.getHours()).padStart(2, '0')}:${String(timeObj.getMinutes()).padStart(2, '0')}:00`;
 
       const { error: insertError } = await supabase
         .from('appointments')
-        .insert([
-          {
-            clinic_id: profile.clinic_id,
-            patient_id: formData.patient_id,
-            appointment_date: formattedDate,
-            appointment_time: formattedTime,
-            reason: formData.reason || null,
-            status: "À venir"
-          }
-        ]);
+        .insert([{
+          clinic_id: profile.clinic_id,
+          patient_id: formData.patient_id,
+          appointment_date: formattedDate,
+          appointment_time: formattedTime,
+          reason: formData.reason || null,
+          status: "À venir"
+        }]);
 
-      // FIX: Better error logging to see exact database complaints
-      if (insertError) {
-        console.error("Détails de l'erreur Supabase:", insertError);
-        throw new Error(insertError.message || "Erreur lors de l'insertion dans la base de données.");
-      }
+      if (insertError) throw new Error(insertError.message || "Erreur lors de l'insertion dans la base de données.");
 
       router.push("/dashboard/agenda");
       router.refresh();
@@ -122,26 +112,15 @@ export default function NouveauRendezVous() {
 
       <form onSubmit={handleSubmit} className="border border-zinc-200 bg-white p-8">
         <div className="grid grid-cols-2 gap-6">
-          
-          {/* Patient Selection Dropdown */}
           <div className="col-span-2">
             <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-700">Patient *</label>
-            <select
-              required
-              value={formData.patient_id}
-              onChange={(e) => setFormData({...formData, patient_id: e.target.value})}
-              className="block w-full border border-zinc-300 bg-zinc-50 p-3 text-sm text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none"
-            >
-              <option value="" disabled>Sélectionnez un patient...</option>
-              {patients.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.first_name} {p.last_name}
-                </option>
-              ))}
-            </select>
+            <PatientSearch 
+              patients={patients} 
+              selectedPatientId={formData.patient_id} 
+              onSelectPatient={(id) => setFormData({...formData, patient_id: id || ""})} 
+            />
           </div>
 
-          {/* Date Selection */}
           <div className="col-span-1">
             <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-700">Date *</label>
             <div className="relative">
@@ -156,7 +135,6 @@ export default function NouveauRendezVous() {
             </div>
           </div>
 
-          {/* Time Selection */}
           <div className="col-span-1">
             <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-700">Heure *</label>
             <div className="relative">
@@ -175,7 +153,6 @@ export default function NouveauRendezVous() {
             </div>
           </div>
 
-          {/* Reason for Visit */}
           <div className="col-span-2">
             <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-700">Motif de consultation</label>
             <input
@@ -186,7 +163,6 @@ export default function NouveauRendezVous() {
               className="block w-full border border-zinc-300 bg-zinc-50 p-3 text-sm text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none"
             />
           </div>
-
         </div>
 
         <div className="mt-8 flex justify-end border-t border-zinc-100 pt-6">

@@ -108,7 +108,13 @@ export default function NouveauPatient() {
               <DatePicker
                 selected={formData.date_of_birth ? new Date(formData.date_of_birth) : null}
                 onChange={(date) => {
-                  const formattedDate = date ? date.toISOString().split('T')[0] : "";
+                  let formattedDate = "";
+                  if (date) {
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    formattedDate = `${year}-${month}-${day}`;
+                  }
                   setFormData({...formData, date_of_birth: formattedDate});
                 }}
                 dateFormat="dd/MM/yyyy"

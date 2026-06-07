@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, FileText, CalendarClock, ArrowUpRight, TrendingUp, Stethoscope } from "lucide-react";
+// NOTICE: We added Zap to the imports below!
+import { Users, FileText, CalendarClock, ArrowUpRight, TrendingUp, Stethoscope, Zap } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
 
@@ -41,19 +42,35 @@ export default function Dashboard() {
           <h1 className="text-4xl font-black tracking-tighter text-zinc-900">Bonjour, Docteur</h1>
           <p className="text-zinc-500 font-medium mt-1">Voici l&apos;activité de votre cabinet pour aujourd&apos;hui.</p>
         </div>
-        <div className="hidden md:flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
-          <TrendingUp className="h-4 w-4 text-emerald-600" />
-          <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Session Sécurisée</span>
+        
+        {/* NEW CONTAINER: Holds both the Badge and the Button side-by-side */}
+        <div className="hidden md:flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
+            <TrendingUp className="h-4 w-4 text-emerald-600" />
+            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Session Sécurisée</span>
+          </div>
+          
+          <button
+            onClick={() => router.push('/dashboard/consultation/rapide')}
+            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 rounded-full shadow-sm transition-all hover:shadow-md"
+          >
+            <Zap className="h-4 w-4 fill-white" />
+            <span className="text-xs font-bold uppercase tracking-wider">Consultation Rapide</span>
+          </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { label: "Patients", value: stats.patients, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "Consultations", value: stats.notes, icon: FileText, color: "text-purple-600", bg: "bg-purple-50" },
-          { label: "Rendez-vous", value: stats.appointmentsToday.length, icon: CalendarClock, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Patients", value: stats.patients, icon: Users, color: "text-blue-600", bg: "bg-blue-50", link: "/dashboard/patients" },
+          { label: "Consultations", value: stats.notes, icon: FileText, color: "text-purple-600", bg: "bg-purple-50", link: "/dashboard/patients" },
+          { label: "Rendez-vous", value: stats.appointmentsToday.length, icon: CalendarClock, color: "text-emerald-600", bg: "bg-emerald-50", link: "/dashboard/agenda" },
         ].map((item, i) => (
-          <div key={i} className="bg-white border border-zinc-200 p-8 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+          <div 
+            key={i} 
+            onClick={() => router.push(item.link)}
+            className="bg-white border border-zinc-200 p-8 shadow-sm hover:shadow-md hover:border-emerald-300 hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden group"
+          >
             <div className={`absolute right-[-10%] top-[-10%] h-24 w-24 rounded-full ${item.bg} opacity-20 group-hover:scale-150 transition-transform duration-700`}></div>
             <div className="flex justify-between items-start relative z-10">
               <div>
@@ -99,7 +116,12 @@ export default function Dashboard() {
             <div className="relative z-10">
               <h3 className="text-sm font-bold mb-2 uppercase tracking-widest">Support Technique</h3>
               <p className="text-xs text-zinc-400 leading-relaxed mb-6">Un problème avec l&apos;impression ou la base de données ? Notre équipe est là.</p>
-              <button className="w-full py-3 bg-white text-zinc-900 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all">Contacter l&apos;Assistance</button>
+              <button 
+                onClick={() => router.push('/dashboard/support')}
+                className="w-full py-3 bg-white text-zinc-900 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all"
+              >
+                Contacter l&apos;Assistance
+              </button>
             </div>
             <div className="absolute right-[-20px] bottom-[-20px] opacity-10">
               <Stethoscope className="h-32 w-32 rotate-12" />

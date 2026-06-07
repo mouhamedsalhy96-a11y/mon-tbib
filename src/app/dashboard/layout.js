@@ -19,7 +19,8 @@ export const useToast = () => useContext(ToastContext);
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [userEmail, setUserEmail] = useState("");
+  
+  const [userProfile, setUserProfile] = useState(null);
   const [toast, setToast] = useState(null);
 
   const showToast = (message, type = "success") => {
@@ -27,11 +28,36 @@ export default function DashboardLayout({ children }) {
   };
 
   useEffect(() => {
-    const getUser = async () => {
+    const getUserAndProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) setUserEmail(user.email);
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('clinic_id')
+        .eq('id', user?.id)
+        .single();
+
+      if (!profile?.clinic_id) {  
+        await supabase.auth.signOut();
+        router.push("/");
+        return;
+      }
+      
+      if (user) {
+        // Fetch full_name from the profiles table
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('full_name, role')
+          .eq('id', user.id)
+          .single();
+
+        setUserProfile({
+          email: user.email,
+          full_name: profileData?.full_name || "",
+          role: profileData?.role || "Praticien"
+        });
+      }
     };
-    getUser();
+    getUserAndProfile();
   }, []);
 
   const menu = [
@@ -44,6 +70,23 @@ export default function DashboardLayout({ children }) {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/");
+  };
+
+  const activeMenu = [...menu]
+    .sort((a, b) => b.to.length - a.to.length)
+    .find(m => pathname.startsWith(m.to));
+  
+  const headerTitle = activeMenu ? activeMenu.label : "Tableau de bord";
+
+  // UPGRADED: Intelligently formats the full name (e.g., "Dr. First Last")
+  const formatDisplayName = () => {
+    if (!userProfile) return "Chargement...";
+    
+    // Simply show the full name they saved in Settings, or fallback to email
+    if (userProfile.full_name && userProfile.full_name.trim() !== "") {
+      return userProfile.full_name;
+    }
+    return userProfile.email.split('@')[0];
   };
 
   return (
@@ -90,8 +133,8 @@ export default function DashboardLayout({ children }) {
             <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl bg-zinc-900/50 border border-zinc-800">
               <UserCircle className="h-8 w-8 text-zinc-600" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-zinc-300 truncate">{userEmail.split('@')[0]}</p>
-                <p className="text-[9px] font-bold uppercase text-emerald-500">Praticien</p>
+                <p className="text-xs font-bold text-zinc-300 truncate capitalize">{formatDisplayName()}</p>
+                <p className="text-[9px] font-bold uppercase text-emerald-500">{userProfile?.role || 'Chargement...'}</p>
               </div>
             </div>
             <button onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-red-400">
@@ -107,7 +150,7 @@ export default function DashboardLayout({ children }) {
               <GlobalSearch />
             </div>
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">
-              <span>{menu.find(m => pathname.startsWith(m.to))?.label || "Session"}</span>
+              <span>{headerTitle}</span>
             </div>
           </header>
           
@@ -118,7 +161,7 @@ export default function DashboardLayout({ children }) {
           </main>
         </div>
 
-        {/* TOAST NOTIFICATION CONTAINER */}
+        {/* TOAST NOTIFICATION */}
         {toast && (
           <Toast 
             message={toast.message} 

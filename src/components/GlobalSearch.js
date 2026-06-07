@@ -1,33 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search, User, X } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Search, User, X, Phone, Calendar as CalendarIcon } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useRouter } from "next/navigation";
+import { patientMatchesSearch, getPatientFirstName, getPatientLastName, formatDateForDisplay } from "../lib/searchUtils";
 
 export default function GlobalSearch() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
+  const [patients, setPatients] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    const searchPatients = async () => {
-      if (query.length < 2) {
-        setResults([]);
-        return;
+    const loadPatients = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase.from('profiles').select('clinic_id').eq('id', user.id).single();
+      if (profile) {
+        const { data } = await supabase
+          .from('patients')
+          .select('id, first_name, last_name, phone, dob, date_of_birth')
+          .eq('clinic_id', profile.clinic_id);
+        setPatients(data || []);
       }
-      const { data } = await supabase
-        .from('patients')
-        .select('id, first_name, last_name')
-        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
-        .limit(5);
-      setResults(data || []);
     };
+    loadPatients();
+  }, []);
 
-    const timer = setTimeout(searchPatients, 300);
-    return () => clearTimeout(timer);
-  }, [query]);
+  // THE SMART SEARCH UTILITY IN ACTION
+  const results = useMemo(() => {
+    if (query.length < 2) return [];
+    return patients
+      .filter((p) => patientMatchesSearch(p, query))
+      .slice(0, 8); // Only show top 8 results
+  }, [patients, query]);
 
   if (!isOpen) return (
     <button 
@@ -46,29 +53,50 @@ export default function GlobalSearch() {
           <input 
             autoFocus
             className="flex-1 text-lg outline-none"
-            placeholder="Tapez un nom..."
+            placeholder="Nom, tél, ou date de naissance..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <button onClick={() => setIsOpen(false)}><X className="h-5 w-5 text-zinc-400" /></button>
+          <button onClick={() => { setIsOpen(false); setQuery(""); }}>
+            <X className="h-5 w-5 text-zinc-400 hover:text-red-500 transition-colors" />
+          </button>
         </div>
         <div className="max-h-96 overflow-y-auto">
-          {results.map(p => (
-            <button 
-              key={p.id}
-              onClick={() => {
-                router.push(`/dashboard/patients/${p.id}`);
-                setIsOpen(false);
-                setQuery("");
-              }}
-              className="w-full p-4 flex items-center gap-4 hover:bg-zinc-50 border-b border-zinc-50 text-left"
-            >
-              <div className="bg-zinc-100 p-2 rounded-full text-zinc-400"><User className="h-4 w-4" /></div>
-              <span className="font-bold text-zinc-900">{p.first_name} {p.last_name}</span>
-            </button>
-          ))}
+          {results.map(p => {
+            const firstName = getPatientFirstName(p);
+            const lastName = getPatientLastName(p);
+            const dobValue = p.dob || p.date_of_birth;
+
+            return (
+              <button 
+                key={p.id}
+                onClick={() => {
+                  router.push(`/dashboard/patients/${p.id}`);
+                  setIsOpen(false);
+                  setQuery("");
+                }}
+                className="w-full p-4 flex items-center justify-between hover:bg-zinc-50 border-b border-zinc-50 text-left group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="bg-zinc-100 p-2 rounded-full text-zinc-400 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-zinc-900 block group-hover:text-emerald-700">{firstName} {lastName}</span>
+                    <div className="flex gap-3 mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                      {p.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {p.phone}</span>}
+                      {dobValue && <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {formatDateForDisplay(dobValue)}</span>}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            )
+          })}
           {query.length >= 2 && results.length === 0 && (
             <div className="p-8 text-center text-zinc-400 text-sm italic">Aucun patient trouvé.</div>
+          )}
+          {query.length < 2 && (
+            <div className="p-8 text-center text-zinc-400 text-sm italic">Tapez au moins 2 caractères pour rechercher...</div>
           )}
         </div>
       </div>
