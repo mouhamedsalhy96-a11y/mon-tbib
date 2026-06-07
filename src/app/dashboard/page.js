@@ -18,7 +18,7 @@ export default function Dashboard() {
         const { data: profile } = await supabase.from('profiles').select('clinic_id').eq('id', user.id).single();
         
         const { count: pCount } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('clinic_id', profile.clinic_id);
-        const { count: nCount } = await supabase.from('medical_notes').select('*', { count: 'exact', head: true }).eq('doctor_id', user.id);
+        const { count: nCount } = await supabase.from('medical_notes').select('*', { count: 'exact', head: true });
         
         const today = new Date().toISOString().split('T')[0];
         const { data: appts } = await supabase.from('appointments').select('*, patients(*)').eq('clinic_id', profile.clinic_id).eq('appointment_date', today).order('appointment_time');
