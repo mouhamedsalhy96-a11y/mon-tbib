@@ -78,11 +78,11 @@ export default function DashboardLayout({ children }) {
   
   const headerTitle = activeMenu ? activeMenu.label : "Tableau de bord";
 
-  // UPGRADED: Intelligently formats the full name (e.g., "Dr. First Last")
+
   const formatDisplayName = () => {
     if (!userProfile) return "Chargement...";
     
-    // Simply show the full name they saved in Settings, or fallback to email
+   
     if (userProfile.full_name && userProfile.full_name.trim() !== "") {
       return userProfile.full_name;
     }

@@ -13,7 +13,7 @@ export default function Connexion() {
   const router = useRouter();
 
   const handleLogin = async (e) => {
-    e.preventDefault(); // Prevents the page from refreshing
+    e.preventDefault(); 
     setLoading(true);
     setError(null);
 

@@ -16,7 +16,6 @@ export default function ConsultationRapide() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   
-  // FIXED: Changed 'dob' to 'date_of_birth' to match your main UI!
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -32,7 +31,6 @@ export default function ConsultationRapide() {
       const { data: { user } } = await supabase.auth.getUser();
       const { data: profile } = await supabase.from('profiles').select('clinic_id').eq('id', user.id).single();
 
-      // FIXED: Saving to date_of_birth so the Consultation Header can read it
       const { data: newPatient, error: patientError } = await supabase
         .from('patients')
         .insert([{

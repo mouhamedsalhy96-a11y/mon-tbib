@@ -6,7 +6,7 @@ import Link from "next/link";
 import { supabase } from "../../../lib/supabase";
 import { useRouter } from "next/navigation";
 
-// Modern calendar imports
+
 import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { fr } from "date-fns/locale";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-// NOTICE: We added Zap to the imports below!
+
 import { Users, FileText, CalendarClock, ArrowUpRight, TrendingUp, Stethoscope, Zap } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";

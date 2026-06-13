@@ -12,7 +12,7 @@ export default function SupportPage() {
     
     const formData = new FormData(event.target);
     
-    // --- IMPORTANT: PASTE YOUR WEB3FORMS KEY HERE ---
+   
     formData.append("access_key", "a6cb9622-d3ef-4bb9-8c03-3c3f407d41ed");
     // ------------------------------------------------
 
